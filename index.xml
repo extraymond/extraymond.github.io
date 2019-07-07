@@ -2,21 +2,21 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Personal Blog</title>
-    <link>https://extraymond.github.com/</link>
+    <link>http://extraymond.github.com/</link>
     <description>Recent content on Personal Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Sun, 07 Jul 2019 20:25:12 +0800</lastBuildDate>
     
-	<atom:link href="https://extraymond.github.com/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="http://extraymond.github.com/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
       <title>Intro</title>
-      <link>https://extraymond.github.com/posts/intro/</link>
+      <link>http://extraymond.github.com/posts/intro/</link>
       <pubDate>Sun, 07 Jul 2019 20:25:12 +0800</pubDate>
       
-      <guid>https://extraymond.github.com/posts/intro/</guid>
+      <guid>http://extraymond.github.com/posts/intro/</guid>
       <description> Helo World </description>
     </item>
     
