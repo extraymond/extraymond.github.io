@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Aframe dragndrop component // Personal Blog</title>
+
+        <meta charset="utf-8">
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    <meta name="description" content="">
+    <meta name="keywords" content="">
+    <meta name="author" content="">
+        <meta property="og:title" content="Aframe dragndrop component" />
+    <meta property="og:description" content="" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://extraymond.github.io/posts/2019-07-07-aframe-dragndrop-component/" />
+    
+
+    <link href="" rel="alternate" type="application/rss+xml" title="Personal Blog" />
+    <link rel="shortcut icon" href="/favicon.png">
+
+    <link href="https://extraymond.github.io/webfonts/ptserif/main.css" rel='stylesheet' type='text/css'>
+    <link href="https://extraymond.github.io/webfonts/source-code-pro/main.css" rel="stylesheet" type="text/css">
+
+    <link rel="stylesheet" href="https://extraymond.github.io/css/style.css">
+
+    <meta name="generator" content="Hugo 0.55.6" />
+</head>
+
+
+<body>
+<div id="container">
+    <header id="header">
+    <div id="header-outer" class="outer">
+        <div id="header-inner" class="inner">
+            <a id="main-nav-toggle" class="nav-icon" href="javascript:;"></a>
+            <a id="logo" class="logo-text" href="https://extraymond.github.io/">Personal Blog</a>
+            <nav id="main-nav">
+                
+                <a class="main-nav-link" href="/categories/">categories</a>
+                
+                <a class="main-nav-link" href="/tags/">tags</a>
+                
+            </nav>
+            <nav id="sub-nav">
+                <div id="search-form-wrap">
+                </div>
+            </nav>
+        </div>
+    </div>
+</header>
+
+    <section id="main" class="outer">
+        <article class="article article-type-post" itemscope itemprop="blogPost">
+    <div class="article-inner">
+        
+        <header class="article-header">
+            <h1 class="article-title" itemprop="name">Aframe dragndrop component</h1>
+        </header>
+        
+        <div class="article-meta">
+            <a href="/posts/2019-07-07-aframe-dragndrop-component/" class="article-date">
+                <time datetime='2019-07-07T00:00:00.000&#43;00:00' itemprop="datePublished">2019-07-07</time>
+            </a>
+            
+            
+            <div class="post-categories">
+                <div class="article-category">
+                    
+                    
+                    <a class="article-category-link" href="https://extraymond.github.io//categories/softdev">softdev</a>
+                    
+                    
+                    <span>&gt;</span>
+                    
+                    <a class="article-category-link" href="https://extraymond.github.io//categories/learning">learning</a>
+                    
+                </div>
+            </div>
+            
+            
+        </div>
+        <div class="article-entry" itemprop="articleBody">
+            
+
+<h1 id="intro">Intro</h1>
+
+<p>In the course of developing an aframe component for a client, I&rsquo;ve learned some tricks regarding threejs.</p>
+
+<ol>
+<li>Detect cursor event from the 2D web into 3D scene.</li>
+<li>Translate 2D behaviour into the 3D world.</li>
+<li>Threejs screen/world conversion.</li>
+</ol>
+
+<p>I will talk about each of them in the following segmens.</p>
+
+<h2 id="mouse-cursor-events-in-aframe">mouse cursor events in AFRAME</h2>
+
+<p>After aframe 0.9.0, things become much integrated when it comes to capture the cursor events into aframe component.</p>
+
+<pre><code class="language-html">&lt;a-scene cusor=&quot;rayOrigin: mouse&quot;&gt;&lt;/a-scene&gt;
+</code></pre>
+
+<p>After specifying &ldquo;rayOrigin&rdquo;, the scene will enable a raycaster component from the mouse position.</p>
+
+<p>You can then listen to cursor events like you used to do with VR controllers. Since the interaction is calculated by a raycaster component, the event detail includes a set of interaction data which you can learn where the interaction occurs.</p>
+
+<pre><code class="language-js">this.el.addEventListener(&quot;click&quot;, (e)=&gt; {
+  console.log(e.detail.intersection.distance)
+})
+</code></pre>
+
+<hr />
+
+<h2 id="cursor-location-in-the-3d-world">cursor location in the 3D world</h2>
+
+<p>The original goal for this component, is to let user drag a 3d object around from the 2d screen statically, while displaying at the same position of the cursor on the screen.</p>
+
+<p>For this to be true at every instance we move the cursor, it means that the object have to be relocated in the normal direction of the viewport plane where our cursor is on.</p>
+
+<h3 id="the-threejs-way-to-do-this">the threejs way to do this</h3>
+
+<p>For the original threejs way to do this, you can find many tutorials like this detailed one <a href="https://www.script-tutorials.com/webgl-with-three-js-lesson-10/">Three-js Drag and Drop</a>.</p>
+
+<p>The key here is this:</p>
+
+<pre><code class="language-js">// capture mouse events here
+
+// screen coordinates start at top-left,
+// we reset it to the center of the screen, which is a 2*2 box.
+var mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+var mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+
+// z is unimportant, since the cursor is sticking on a plane parellel to the camera plane
+var arbitraryZ = -1
+var cursorIn3D = new THREE.Vector(mosueX, mouseY, arbitraryZ)
+
+cursorIn3D.unproject(currentCam)
+</code></pre>
+
+<p>The last line is the most important. Since we can get 2d coordinates of a 3d point by projecting it into a viewing plane. We can reverse this process to get the 3d position of a 2d point sticking on the plane.</p>
+
+<h4 id="dragging">dragging</h4>
+
+<p>If we want to move objects where it always stay in front of the cursor:</p>
+
+<pre><code class="language-js">// Lets say we start dragging by clicking.
+
+var direction = cursorIn3D.clone().sub(currentCam.position).normalize()
+var distance = currentCam.position.clone().sub(object.position).length()
+
+// After capture mousemove event here...
+
+var target = currentCam.position.clone().add(direction.multiplyScalar(distance))
+
+object.position.copy(target)
+</code></pre>
+
+<h3 id="easier-way-with-aframe">easier way with AFRAME</h3>
+
+<p>As mentioned earlier, if we set &ldquo;rayOrigin: mouse&rdquo; in the cursor component, it actually setup a raycaster and calculate whether the current cursor position is pointing directly toward the object.</p>
+
+<p>By the time we are notified by these events, the direction and distance of the instance is also provided by us in the event payload. With aframe things become much easier.</p>
+
+<pre><code class="language-js">AFRAME.registerComponent(&quot;dragndrop&quot;, {
+  init: function() {
+    this.dist = null
+    this.dir = new THREE.Vector3()
+
+    this.scene = this.el.sceneEl
+    this.camera = this.scene.camera.el
+
+    this.el.addEventListener(&quot;mousedown&quot;, e =&gt;{
+      // update the base distance between the cursor to the object
+      this.dist = this.el.object3D.position.clone()
+        .sub(this.camera.object3D.position).length()
+
+      this.dir.copy(this.scene.getAttribute(&quot;raycaster&quot;).direction)
+
+      this.el.addState(&quot;being-dragged&quot;)
+    })
+
+    document.addEventListener(&quot;mousemove&quot;, () =&gt;{
+      // update the direction from raycaster coponent
+      this.dir.copy(this.scene.getAttribute(&quot;raycaster&quot;).direction)
+    })
+
+    this.el.addEventListener(&quot;click&quot;, e=&gt; {
+      // complete the drag when click completed
+      this.el.removeState(&quot;being-dragged&quot;)
+    })
+
+  },
+  tick: function() {
+    // only move it when certain state is meet
+    if (this.el.is('being-dragged')) {
+      var target = this.camera.object3D.position.clone().add(this.dir.multiplyScalar(this.dist))
+
+      this.el.object3D.copy(target)
+    }
+  }
+})
+
+</code></pre>
+
+<h3 id="additional-gesture-with-mouse-wheel">additional gesture with mouse wheel</h3>
+
+<p>It&rsquo;s natural for 3d applications to use wheel to send a object further/close, we can similarly implement this by:</p>
+
+<pre><code class="language-js">var extra = 0
+document.addEventListener(&quot;wheel&quot;, e=&gt;{
+  if (e.deltaY &gt;0) {
+    extra += 0.1
+  } else {
+    extra -= 0.1
+  }
+})
+
+// change the distance to base + extra
+var target = camera.object3D.position.clone().add(camDir.multiplyScalar(distance + extra))
+
+this.el.object3D.position.copy(target)
+</code></pre>
+
+<p>You can similarly add secondary mouse action or other keyboard actions into the component.</p>
+
+<hr />
+
+<h2 id="thigns-i-ve-learned-from-mistakes">thigns I&rsquo;ve learned from mistakes</h2>
+
+<p>When developing AFRAME components there is a <strong>event</strong> slot in the component documentation. I was thinking it means for a place you can add event listener on the element it was initiated. I was wrong, it is per component only, meant to be use for global component cleanup.</p>
+
+<h2 id="conclusion">conclusion</h2>
+
+<p>AFRAME is such a well developed framework that it really make abstracting it at a very high level where you can be very productive implementing E.C.S systems.</p>
+
+<p>Here&rsquo;s the component I&rsquo;ve created:</p>
+
+<p><a href="https://www.jsdelivr.com/package/npm/aframe-mouse-dragndrop-component">npm module link</a>
+<a href="https://sassy-piper.glitch.me/">live demo link</a></p>
+
+<p>If you want to play around, you can check the live demo.</p>
+
+        </div>
+
+        
+        
+        <div class="article-toc" style="display:none;">
+            <h3>Contents</h3>
+            <nav id="TableOfContents">
+<ul>
+<li><a href="#intro">Intro</a>
+<ul>
+<li><a href="#mouse-cursor-events-in-aframe">mouse cursor events in AFRAME</a></li>
+<li><a href="#cursor-location-in-the-3d-world">cursor location in the 3D world</a>
+<ul>
+<li><a href="#the-threejs-way-to-do-this">the threejs way to do this</a>
+<ul>
+<li><a href="#dragging">dragging</a></li>
+</ul></li>
+<li><a href="#easier-way-with-aframe">easier way with AFRAME</a></li>
+<li><a href="#additional-gesture-with-mouse-wheel">additional gesture with mouse wheel</a></li>
+</ul></li>
+<li><a href="#thigns-i-ve-learned-from-mistakes">thigns I&rsquo;ve learned from mistakes</a></li>
+<li><a href="#conclusion">conclusion</a></li>
+</ul></li>
+</ul>
+</nav>
+        </div>
+        
+        
+
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.slim.min.js" integrity="sha256-/SIrNqv8h6QGKDuNoLGA4iret+kyesCkHGzVUUV0shc=" crossorigin="anonymous"></script>
+        <script>
+            (function() {
+                var $toc = $('#TableOfContents');
+                if ($toc.length > 0) {
+                    var $window = $(window);
+
+                    function onScroll(){
+                        var currentScroll = $window.scrollTop();
+                        var h = $('.article-entry h1, .article-entry h2, .article-entry h3, .article-entry h4, .article-entry h5, .article-entry h6');
+                        var id = "";
+                        h.each(function (i, e) {
+                            e = $(e);
+                            if (e.offset().top - 10 <= currentScroll) {
+                                id = e.attr('id');
+                            }
+                        });
+                        var active = $toc.find('a.active');
+                        if (active.length == 1 && active.eq(0).attr('href') == '#' + id) return true;
+
+                        active.each(function (i, e) {
+                            $(e).removeClass('active').siblings('ul').hide();
+                        });
+                        $toc.find('a[href="#' + id + '"]').parentsUntil('#TableOfContents').each(function (i, e) {
+                            $(e).children('a').addClass('active').siblings('ul').show();
+                        });
+                    }
+
+                    $window.on('scroll', onScroll);
+                    $(document).ready(function() {
+                        $toc.find('a').parent('li').find('ul').hide();
+                        onScroll();
+                        document.getElementsByClassName('article-toc')[0].style.display = '';
+                    });
+                }
+            })();
+        </script>
+        
+
+
+        
+        <footer class="article-footer">
+            <ul class="article-tag-list">
+                
+                <li class="article-tag-list-item">
+                    <a class="article-tag-list-link" href="https://extraymond.github.io//tags/aframe">aframe
+                    </a>
+                </li>
+                
+                <li class="article-tag-list-item">
+                    <a class="article-tag-list-link" href="https://extraymond.github.io//tags/threejs">threejs
+                    </a>
+                </li>
+                
+            </ul>
+        </footer>
+        
+    </div>
+    <nav id="article-nav">
+    
+    
+</nav>
+
+</article>
+
+        
+    </section>
+    <footer id="footer">
+    <div class="outer">
+        <div id="footer-info" class="inner">
+            &copy; 2019 Personal Blog
+            <br />
+            Powered by <a href="https://gohugo.io" target="_blank">Hugo</a> with theme <a href="https://github.com/carsonip/hugo-theme-minos" target="_blank">Minos</a>
+        </div>
+    </div>
+    
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.9.0/styles/tomorrow-night.min.css" integrity="sha256-2wL88NKUqvJi/ExflDzkzUumjUM73mcK2gBvBBeLvTk=" crossorigin="anonymous" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.9.0/highlight.min.js" integrity="sha256-KbfTjB0WZ8vvXngdpJGY3Yp3xKk+tttbqClO11anCIU=" crossorigin="anonymous"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.7.1/katex.min.css" integrity="sha384-wITovz90syo1dJWVh32uuETPVEtGigN07tkttEqPv+uR2SE/mbQcG7ATL28aI9H0" crossorigin="anonymous">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.7.1/katex.min.js" integrity="sha384-/y1Nn9+QQAipbNQWU65krzJralCnuOasHncUFXGkdwntGeSvQicrYkiUBwsgUqc1" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.7.1/contrib/auto-render.min.js" integrity="sha256-ExtbCSBuYA7kq1Pz362ibde9nnsHYPt6JxuxYeZbU+c=" crossorigin="anonymous"></script>
+        <script>renderMathInElement(document.body);</script>
+    
+    <script>
+        document.getElementById('main-nav-toggle').addEventListener('click', function () {
+            var header = document.getElementById('header');
+            if (header.classList.contains('mobile-on')) {
+                header.classList.remove('mobile-on');
+            } else {
+                header.classList.add('mobile-on');
+            }
+        });
+    </script>
+</footer>
+
+</div>
+</body>
+</html>

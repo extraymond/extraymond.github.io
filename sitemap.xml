@@ -3,29 +3,55 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
-    <loc>https://extraymond.github.io/posts/intro/</loc>
-    <lastmod>2019-07-07T20:25:12+08:00</lastmod>
+    <loc>https://extraymond.github.io/posts/2019-07-07-aframe-dragndrop-component/</loc>
+    <lastmod>2019-07-07T00:00:00+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://extraymond.github.io/categories/</loc>
+    <lastmod>2019-07-07T00:00:00+00:00</lastmod>
+    <priority>0</priority>
   </url>
   
   <url>
     <loc>https://extraymond.github.io/</loc>
-    <lastmod>2019-07-07T20:25:12+08:00</lastmod>
+    <lastmod>2019-07-07T00:00:00+00:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>https://extraymond.github.io/posts/</loc>
-    <lastmod>2019-07-07T20:25:12+08:00</lastmod>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://extraymond.github.io/categories/</loc>
+    <lastmod>2019-07-07T00:00:00+00:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>https://extraymond.github.io/tags/</loc>
+    <lastmod>2019-07-07T00:00:00+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://extraymond.github.io/tags/aframe/</loc>
+    <lastmod>2019-07-07T00:00:00+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://extraymond.github.io/categories/learning/</loc>
+    <lastmod>2019-07-07T00:00:00+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://extraymond.github.io/categories/softdev/</loc>
+    <lastmod>2019-07-07T00:00:00+00:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://extraymond.github.io/tags/threejs/</loc>
+    <lastmod>2019-07-07T00:00:00+00:00</lastmod>
     <priority>0</priority>
   </url>
   

@@ -6,18 +6,20 @@
     <description>Recent content on Personal Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sun, 07 Jul 2019 20:25:12 +0800</lastBuildDate>
+    <lastBuildDate>Sun, 07 Jul 2019 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="https://extraymond.github.io/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
-      <title>Intro</title>
-      <link>https://extraymond.github.io/posts/intro/</link>
-      <pubDate>Sun, 07 Jul 2019 20:25:12 +0800</pubDate>
+      <title>Aframe dragndrop component</title>
+      <link>https://extraymond.github.io/posts/2019-07-07-aframe-dragndrop-component/</link>
+      <pubDate>Sun, 07 Jul 2019 00:00:00 +0000</pubDate>
       
-      <guid>https://extraymond.github.io/posts/intro/</guid>
-      <description>Helo World This is my first page.</description>
+      <guid>https://extraymond.github.io/posts/2019-07-07-aframe-dragndrop-component/</guid>
+      <description>Intro In the course of developing an aframe component for a client, I&amp;rsquo;ve learned some tricks regarding threejs.
+ Detect cursor event from the 2D web into 3D scene. Translate 2D behaviour into the 3D world. Threejs screen/world conversion.  I will talk about each of them in the following segmens.
+mouse cursor events in AFRAME After aframe 0.9.0, things become much integrated when it comes to capture the cursor events into aframe component.</description>
     </item>
     
   </channel>
