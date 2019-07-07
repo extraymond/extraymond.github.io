@@ -199,7 +199,8 @@ object.position.copy(target)
   tick: function() {
     // only move it when certain state is meet
     if (this.el.is('being-dragged')) {
-      var target = this.camera.object3D.position.clone().add(this.dir.multiplyScalar(this.dist))
+      var target = this.camera.object3D.position.clone()
+        .add(this.dir.multiplyScalar(this.dist))
 
       this.el.object3D.copy(target)
     }
