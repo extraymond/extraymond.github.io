@@ -24,7 +24,7 @@
 
     <link rel="stylesheet" href="https://extraymond.github.io/css/style.css">
 
-    <meta name="generator" content="Hugo 0.55.6" />
+    <meta name="generator" content="Hugo 0.57.2" />
 </head>
 
 
@@ -102,19 +102,14 @@
 <h2 id="mouse-cursor-events-in-aframe">mouse cursor events in AFRAME</h2>
 
 <p>After aframe 0.9.0, things become much integrated when it comes to capture the cursor events into aframe component.</p>
-
-<pre><code class="language-html">&lt;a-scene cusor=&quot;rayOrigin: mouse&quot;&gt;&lt;/a-scene&gt;
-</code></pre>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-html" data-lang="html">&lt;<span style="color:#f92672">a-scene</span> <span style="color:#a6e22e">cusor</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;rayOrigin: mouse&#34;</span>&gt;&lt;/<span style="color:#f92672">a-scene</span>&gt;</code></pre></div>
 <p>After specifying &ldquo;rayOrigin&rdquo;, the scene will enable a raycaster component from the mouse position.</p>
 
 <p>You can then listen to cursor events like you used to do with VR controllers. Since the interaction is calculated by a raycaster component, the event detail includes a set of interaction data which you can learn where the interaction occurs.</p>
-
-<pre><code class="language-js">this.el.addEventListener(&quot;click&quot;, (e)=&gt; {
-  console.log(e.detail.intersection.distance)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js"><span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">el</span>.<span style="color:#a6e22e">addEventListener</span>(<span style="color:#e6db74">&#34;click&#34;</span>, (<span style="color:#a6e22e">e</span>)=&gt; {
+  <span style="color:#a6e22e">console</span>.<span style="color:#a6e22e">log</span>(<span style="color:#a6e22e">e</span>.<span style="color:#a6e22e">detail</span>.<span style="color:#a6e22e">intersection</span>.<span style="color:#a6e22e">distance</span>)
 })
-</code></pre>
-
+</code></pre></div>
 <hr />
 
 <h2 id="cursor-location-in-the-3d-world">cursor location in the 3D world</h2>
@@ -128,106 +123,97 @@
 <p>For the original threejs way to do this, you can find many tutorials like this detailed one <a href="https://www.script-tutorials.com/webgl-with-three-js-lesson-10/">Three-js Drag and Drop</a>.</p>
 
 <p>The key here is this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js"><span style="color:#75715e">// capture mouse events here
+</span><span style="color:#75715e"></span>
+<span style="color:#75715e">// screen coordinates start at top-left,
+</span><span style="color:#75715e">// we reset it to the center of the screen, which is a 2*2 box.
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">mouseX</span> <span style="color:#f92672">=</span> (<span style="color:#a6e22e">event</span>.<span style="color:#a6e22e">clientX</span> <span style="color:#f92672">/</span> window.<span style="color:#a6e22e">innerWidth</span>) <span style="color:#f92672">*</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>;
+<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">mouseY</span> <span style="color:#f92672">=</span> <span style="color:#f92672">-</span>(<span style="color:#a6e22e">event</span>.<span style="color:#a6e22e">clientY</span> <span style="color:#f92672">/</span> window.<span style="color:#a6e22e">innerHeight</span>) <span style="color:#f92672">*</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>;
 
-<pre><code class="language-js">// capture mouse events here
+<span style="color:#75715e">// z is unimportant, since the cursor is sticking on a plane parellel to the camera plane
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">arbitraryZ</span> <span style="color:#f92672">=</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>
+<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">cursorIn3D</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> <span style="color:#a6e22e">THREE</span>.<span style="color:#a6e22e">Vector</span>(<span style="color:#a6e22e">mosueX</span>, <span style="color:#a6e22e">mouseY</span>, <span style="color:#a6e22e">arbitraryZ</span>)
 
-// screen coordinates start at top-left,
-// we reset it to the center of the screen, which is a 2*2 box.
-var mouseX = (event.clientX / window.innerWidth) * 2 - 1;
-var mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
-
-// z is unimportant, since the cursor is sticking on a plane parellel to the camera plane
-var arbitraryZ = -1
-var cursorIn3D = new THREE.Vector(mosueX, mouseY, arbitraryZ)
-
-cursorIn3D.unproject(currentCam)
-</code></pre>
-
+<span style="color:#a6e22e">cursorIn3D</span>.<span style="color:#a6e22e">unproject</span>(<span style="color:#a6e22e">currentCam</span>)
+</code></pre></div>
 <p>The last line is the most important. Since we can get 2d coordinates of a 3d point by projecting it into a viewing plane. We can reverse this process to get the 3d position of a 2d point sticking on the plane.</p>
 
 <h4 id="dragging">dragging</h4>
 
 <p>If we want to move objects where it always stay in front of the cursor:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js"><span style="color:#75715e">// Lets say we start dragging by clicking.
+</span><span style="color:#75715e"></span>
+<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">direction</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">cursorIn3D</span>.<span style="color:#a6e22e">clone</span>().<span style="color:#a6e22e">sub</span>(<span style="color:#a6e22e">currentCam</span>.<span style="color:#a6e22e">position</span>).<span style="color:#a6e22e">normalize</span>()
+<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">distance</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">currentCam</span>.<span style="color:#a6e22e">position</span>.<span style="color:#a6e22e">clone</span>().<span style="color:#a6e22e">sub</span>(<span style="color:#a6e22e">object</span>.<span style="color:#a6e22e">position</span>).<span style="color:#a6e22e">length</span>()
 
-<pre><code class="language-js">// Lets say we start dragging by clicking.
+<span style="color:#75715e">// After capture mousemove event here...
+</span><span style="color:#75715e"></span>
+<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">target</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">currentCam</span>.<span style="color:#a6e22e">position</span>.<span style="color:#a6e22e">clone</span>().<span style="color:#a6e22e">add</span>(<span style="color:#a6e22e">direction</span>.<span style="color:#a6e22e">multiplyScalar</span>(<span style="color:#a6e22e">distance</span>))
 
-var direction = cursorIn3D.clone().sub(currentCam.position).normalize()
-var distance = currentCam.position.clone().sub(object.position).length()
-
-// After capture mousemove event here...
-
-var target = currentCam.position.clone().add(direction.multiplyScalar(distance))
-
-object.position.copy(target)
-</code></pre>
-
+<span style="color:#a6e22e">object</span>.<span style="color:#a6e22e">position</span>.<span style="color:#a6e22e">copy</span>(<span style="color:#a6e22e">target</span>)
+</code></pre></div>
 <h3 id="easier-way-with-aframe">easier way with AFRAME</h3>
 
 <p>As mentioned earlier, if we set &ldquo;rayOrigin: mouse&rdquo; in the cursor component, it actually setup a raycaster and calculate whether the current cursor position is pointing directly toward the object.</p>
 
 <p>By the time we are notified by these events, the direction and distance of the instance is also provided by us in the event payload. With aframe things become much easier.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js"><span style="color:#a6e22e">AFRAME</span>.<span style="color:#a6e22e">registerComponent</span>(<span style="color:#e6db74">&#34;dragndrop&#34;</span>, {
+  <span style="color:#a6e22e">init</span><span style="color:#f92672">:</span> <span style="color:#66d9ef">function</span>() {
+    <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">dist</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">null</span>
+    <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">dir</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> <span style="color:#a6e22e">THREE</span>.<span style="color:#a6e22e">Vector3</span>()
 
-<pre><code class="language-js">AFRAME.registerComponent(&quot;dragndrop&quot;, {
-  init: function() {
-    this.dist = null
-    this.dir = new THREE.Vector3()
+    <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">scene</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">el</span>.<span style="color:#a6e22e">sceneEl</span>
+    <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">camera</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">scene</span>.<span style="color:#a6e22e">camera</span>.<span style="color:#a6e22e">el</span>
 
-    this.scene = this.el.sceneEl
-    this.camera = this.scene.camera.el
+    <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">el</span>.<span style="color:#a6e22e">addEventListener</span>(<span style="color:#e6db74">&#34;mousedown&#34;</span>, <span style="color:#a6e22e">e</span> =&gt;{
+      <span style="color:#75715e">// update the base distance between the cursor to the object
+</span><span style="color:#75715e"></span>      <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">dist</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">el</span>.<span style="color:#a6e22e">object3D</span>.<span style="color:#a6e22e">position</span>.<span style="color:#a6e22e">clone</span>()
+        .<span style="color:#a6e22e">sub</span>(<span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">camera</span>.<span style="color:#a6e22e">object3D</span>.<span style="color:#a6e22e">position</span>).<span style="color:#a6e22e">length</span>()
 
-    this.el.addEventListener(&quot;mousedown&quot;, e =&gt;{
-      // update the base distance between the cursor to the object
-      this.dist = this.el.object3D.position.clone()
-        .sub(this.camera.object3D.position).length()
+      <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">dir</span>.<span style="color:#a6e22e">copy</span>(<span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">scene</span>.<span style="color:#a6e22e">getAttribute</span>(<span style="color:#e6db74">&#34;raycaster&#34;</span>).<span style="color:#a6e22e">direction</span>)
 
-      this.dir.copy(this.scene.getAttribute(&quot;raycaster&quot;).direction)
-
-      this.el.addState(&quot;being-dragged&quot;)
+      <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">el</span>.<span style="color:#a6e22e">addState</span>(<span style="color:#e6db74">&#34;being-dragged&#34;</span>)
     })
 
-    document.addEventListener(&quot;mousemove&quot;, () =&gt;{
-      // update the direction from raycaster coponent
-      this.dir.copy(this.scene.getAttribute(&quot;raycaster&quot;).direction)
+    document.<span style="color:#a6e22e">addEventListener</span>(<span style="color:#e6db74">&#34;mousemove&#34;</span>, () =&gt;{
+      <span style="color:#75715e">// update the direction from raycaster coponent
+</span><span style="color:#75715e"></span>      <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">dir</span>.<span style="color:#a6e22e">copy</span>(<span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">scene</span>.<span style="color:#a6e22e">getAttribute</span>(<span style="color:#e6db74">&#34;raycaster&#34;</span>).<span style="color:#a6e22e">direction</span>)
     })
 
-    this.el.addEventListener(&quot;click&quot;, e=&gt; {
-      // complete the drag when click completed
-      this.el.removeState(&quot;being-dragged&quot;)
+    <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">el</span>.<span style="color:#a6e22e">addEventListener</span>(<span style="color:#e6db74">&#34;click&#34;</span>, <span style="color:#a6e22e">e</span>=&gt; {
+      <span style="color:#75715e">// complete the drag when click completed
+</span><span style="color:#75715e"></span>      <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">el</span>.<span style="color:#a6e22e">removeState</span>(<span style="color:#e6db74">&#34;being-dragged&#34;</span>)
     })
 
   },
-  tick: function() {
-    // only move it when certain state is meet
-    if (this.el.is('being-dragged')) {
-      var target = this.camera.object3D.position.clone()
-        .add(this.dir.multiplyScalar(this.dist))
+  <span style="color:#a6e22e">tick</span><span style="color:#f92672">:</span> <span style="color:#66d9ef">function</span>() {
+    <span style="color:#75715e">// only move it when certain state is meet
+</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span> (<span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">el</span>.<span style="color:#a6e22e">is</span>(<span style="color:#e6db74">&#39;being-dragged&#39;</span>)) {
+      <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">target</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">camera</span>.<span style="color:#a6e22e">object3D</span>.<span style="color:#a6e22e">position</span>.<span style="color:#a6e22e">clone</span>()
+        .<span style="color:#a6e22e">add</span>(<span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">dir</span>.<span style="color:#a6e22e">multiplyScalar</span>(<span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">dist</span>))
 
-      this.el.object3D.copy(target)
+      <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">el</span>.<span style="color:#a6e22e">object3D</span>.<span style="color:#a6e22e">copy</span>(<span style="color:#a6e22e">target</span>)
     }
   }
 })
-
-</code></pre>
-
+</code></pre></div>
 <h3 id="additional-gesture-with-mouse-wheel">additional gesture with mouse wheel</h3>
 
 <p>It&rsquo;s natural for 3d applications to use wheel to send a object further/close, we can similarly implement this by:</p>
-
-<pre><code class="language-js">var extra = 0
-document.addEventListener(&quot;wheel&quot;, e=&gt;{
-  if (e.deltaY &gt;0) {
-    extra += 0.1
-  } else {
-    extra -= 0.1
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js"><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">extra</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+document.<span style="color:#a6e22e">addEventListener</span>(<span style="color:#e6db74">&#34;wheel&#34;</span>, <span style="color:#a6e22e">e</span>=&gt;{
+  <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">e</span>.<span style="color:#a6e22e">deltaY</span> <span style="color:#f92672">&gt;</span><span style="color:#ae81ff">0</span>) {
+    <span style="color:#a6e22e">extra</span> <span style="color:#f92672">+=</span> <span style="color:#ae81ff">0.1</span>
+  } <span style="color:#66d9ef">else</span> {
+    <span style="color:#a6e22e">extra</span> <span style="color:#f92672">-=</span> <span style="color:#ae81ff">0.1</span>
   }
 })
 
-// change the distance to base + extra
-var target = camera.object3D.position.clone().add(camDir.multiplyScalar(distance + extra))
+<span style="color:#75715e">// change the distance to base + extra
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">target</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">camera</span>.<span style="color:#a6e22e">object3D</span>.<span style="color:#a6e22e">position</span>.<span style="color:#a6e22e">clone</span>().<span style="color:#a6e22e">add</span>(<span style="color:#a6e22e">camDir</span>.<span style="color:#a6e22e">multiplyScalar</span>(<span style="color:#a6e22e">distance</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">extra</span>))
 
-this.el.object3D.position.copy(target)
-</code></pre>
-
+<span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">el</span>.<span style="color:#a6e22e">object3D</span>.<span style="color:#a6e22e">position</span>.<span style="color:#a6e22e">copy</span>(<span style="color:#a6e22e">target</span>)
+</code></pre></div>
 <p>You can similarly add secondary mouse action or other keyboard actions into the component.</p>
 
 <hr />
@@ -336,6 +322,12 @@ this.el.object3D.position.copy(target)
         
     </div>
     <nav id="article-nav">
+    
+    <a href="/posts/2019-08-25-let-s-create-a-task-manager-in-webworker/" id="article-nav-newer" class="article-nav-link-wrap">
+        <div class="article-nav-title"><span>&lt;</span>&nbsp;
+            Let&#39;s create a task manager in webworker.
+        </div>
+    </a>
     
     
 </nav>

@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>learning on Personal Blog</title>
-    <link>https://extraymond.github.io/categories/learning/</link>
-    <description>Recent content in learning on Personal Blog</description>
+    <title>wasm on Personal Blog</title>
+    <link>https://extraymond.github.io/tags/wasm/</link>
+    <description>Recent content in wasm on Personal Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Sun, 25 Aug 2019 00:00:00 +0000</lastBuildDate>
     
-	<atom:link href="https://extraymond.github.io/categories/learning/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="https://extraymond.github.io/tags/wasm/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
@@ -19,17 +19,6 @@
       <guid>https://extraymond.github.io/posts/2019-08-25-let-s-create-a-task-manager-in-webworker/</guid>
       <description>I would really appreciate any discussion that I can learn how to code better in rust/wasm or coding in general. So if you have some suggestions, please point them out. Thx.
  Into It always fascinated me to explore how rust/wasm and webworker can be used together. For people with short memory span like me, it&amp;rsquo;s always nice to be able to understand the context of asynchronous task marked after async/await.</description>
-    </item>
-    
-    <item>
-      <title>Aframe dragndrop component</title>
-      <link>https://extraymond.github.io/posts/2019-07-07-aframe-dragndrop-component/</link>
-      <pubDate>Sun, 07 Jul 2019 00:00:00 +0000</pubDate>
-      
-      <guid>https://extraymond.github.io/posts/2019-07-07-aframe-dragndrop-component/</guid>
-      <description>Intro In the course of developing an aframe component for a client, I&amp;rsquo;ve learned some tricks regarding threejs.
- Detect cursor event from the 2D web into 3D scene. Translate 2D behaviour into the 3D world. Threejs screen/world conversion.  I will talk about each of them in the following segmens.
-mouse cursor events in AFRAME After aframe 0.9.0, things become much integrated when it comes to capture the cursor events into aframe component.</description>
     </item>
     
   </channel>

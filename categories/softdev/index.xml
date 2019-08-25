@@ -6,10 +6,20 @@
     <description>Recent content in softdev on Personal Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sun, 07 Jul 2019 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Sun, 25 Aug 2019 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="https://extraymond.github.io/categories/softdev/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Let&#39;s create a task manager in webworker.</title>
+      <link>https://extraymond.github.io/posts/2019-08-25-let-s-create-a-task-manager-in-webworker/</link>
+      <pubDate>Sun, 25 Aug 2019 00:00:00 +0000</pubDate>
+      
+      <guid>https://extraymond.github.io/posts/2019-08-25-let-s-create-a-task-manager-in-webworker/</guid>
+      <description>I would really appreciate any discussion that I can learn how to code better in rust/wasm or coding in general. So if you have some suggestions, please point them out. Thx.
+ Into It always fascinated me to explore how rust/wasm and webworker can be used together. For people with short memory span like me, it&amp;rsquo;s always nice to be able to understand the context of asynchronous task marked after async/await.</description>
+    </item>
     
     <item>
       <title>Aframe dragndrop component</title>

@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Let&#39;s create a task manager in webworker. // Personal Blog</title>
+
+        <meta charset="utf-8">
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    <meta name="description" content="">
+    <meta name="keywords" content="">
+    <meta name="author" content="">
+        <meta property="og:title" content="Let&#39;s create a task manager in webworker." />
+    <meta property="og:description" content="" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://extraymond.github.io/posts/2019-08-25-let-s-create-a-task-manager-in-webworker/" />
+    
+
+    <link href="" rel="alternate" type="application/rss+xml" title="Personal Blog" />
+    <link rel="shortcut icon" href="/favicon.png">
+
+    <link href="https://extraymond.github.io/webfonts/ptserif/main.css" rel='stylesheet' type='text/css'>
+    <link href="https://extraymond.github.io/webfonts/source-code-pro/main.css" rel="stylesheet" type="text/css">
+
+    <link rel="stylesheet" href="https://extraymond.github.io/css/style.css">
+
+    <meta name="generator" content="Hugo 0.57.2" />
+</head>
+
+
+<body>
+<div id="container">
+    <header id="header">
+    <div id="header-outer" class="outer">
+        <div id="header-inner" class="inner">
+            <a id="main-nav-toggle" class="nav-icon" href="javascript:;"></a>
+            <a id="logo" class="logo-text" href="https://extraymond.github.io/">Personal Blog</a>
+            <nav id="main-nav">
+                
+                <a class="main-nav-link" href="/categories/">categories</a>
+                
+                <a class="main-nav-link" href="/tags/">tags</a>
+                
+            </nav>
+            <nav id="sub-nav">
+                <div id="search-form-wrap">
+                </div>
+            </nav>
+        </div>
+    </div>
+</header>
+
+    <section id="main" class="outer">
+        <article class="article article-type-post" itemscope itemprop="blogPost">
+    <div class="article-inner">
+        
+        <header class="article-header">
+            <h1 class="article-title" itemprop="name">Let&#39;s create a task manager in webworker.</h1>
+        </header>
+        
+        <div class="article-meta">
+            <a href="/posts/2019-08-25-let-s-create-a-task-manager-in-webworker/" class="article-date">
+                <time datetime='2019-08-25T00:00:00.000&#43;00:00' itemprop="datePublished">2019-08-25</time>
+            </a>
+            
+            
+            <div class="post-categories">
+                <div class="article-category">
+                    
+                    
+                    <a class="article-category-link" href="https://extraymond.github.io//categories/softdev">softdev</a>
+                    
+                    
+                    <span>&gt;</span>
+                    
+                    <a class="article-category-link" href="https://extraymond.github.io//categories/learning">learning</a>
+                    
+                </div>
+            </div>
+            
+            
+            <div class="article-comment-link-wrap">
+                <a href="/posts/2019-08-25-let-s-create-a-task-manager-in-webworker/#disqus_thread" class="article-comment-link">Comments</a>
+            </div>
+            
+        </div>
+        <div class="article-entry" itemprop="articleBody">
+            
+
+<blockquote>
+<p>I would really appreciate any discussion that I can learn how to code better in rust/wasm or coding in general. So if you have some suggestions, please point them out. Thx.</p>
+</blockquote>
+
+<h1 id="into">Into</h1>
+
+<p>It always fascinated me to explore how rust/wasm and webworker can be used together. For people with short memory span like me, it&rsquo;s always nice to be able to understand the context of asynchronous task marked after async/await.</p>
+
+<p>After some experiments, I&rsquo;ve started to think that it might not be a bad idea to offload blocking/network tasks to webworker. By offload I mean to instantiate the rust wasm module inside the webworker script.</p>
+
+<p>It would also be nicer, if we can do some task management inside the wasm module, so that we can let the main thread decide whether the task should keep going, resume if necessary and spawning new tasks.</p>
+
+<p>Let&rsquo;s make this happen.</p>
+
+<h2 id="goal">Goal</h2>
+
+<p>Since not all workflows are born equal, before we start, let&rsquo;s create some limitations so we can focus on a smaller scope.</p>
+
+<ol>
+<li>Create a running service inside the rust/wasm module, instantiated in the worker script.</li>
+<li>Being able to suspend/resume a task from main thread.</li>
+<li>Being able to cancel a task from main thread.</li>
+</ol>
+
+<h2 id="implementation">Implementation</h2>
+
+<p>This example is build with the following crate:</p>
+
+<ol>
+<li>Nightly rust</li>
+<li>futures-preview(0.3) with features &ldquo;async-await&rdquo;, &ldquo;nightly&rdquo; enabled</li>
+<li>wasm-bindgen-futures with feature &ldquo;futures_0_3&rdquo; enabled</li>
+<li>web_sys with features &ldquo;Worker&rdquo;, &ldquo;WorkerGlobalScope&rdquo; enabled</li>
+</ol>
+
+<h3 id="send-msg-to-rust-wasm">Send msg to rust/wasm</h3>
+
+<p>After instantiating our rust program inside the worker script. The first thing we need to consider, is how to pass messages from the main thread to the rust program. Typically for js programs, messages are handled in the onmesage block, so we can start from there.</p>
+
+<p>This can be done by creating a receiving method in the rust program.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-rust" data-lang="rust"><span style="color:#66d9ef">use</span> wasm_bindgen::JaValue;
+
+<span style="color:#75715e">#[wasm_bindgen]</span>
+<span style="color:#66d9ef">pub</span> <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">recv_msg</span>(msg: <span style="color:#a6e22e">JsValue</span>) {
+  <span style="color:#75715e">// handle msg here.
+</span><span style="color:#75715e"></span>}
+</code></pre></div>
+<p>Import module and listen to incoming message</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js"><span style="color:#75715e">/// this one differs with different loader.
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">import</span> { <span style="color:#a6e22e">module</span> } <span style="color:#a6e22e">from</span> <span style="color:#e6db74">&#34;Cargo.toml&#34;</span>;
+
+<span style="color:#a6e22e">self</span>.<span style="color:#a6e22e">onmessage</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">e</span>=&gt; {
+  <span style="color:#a6e22e">module</span>.<span style="color:#a6e22e">recv_msg</span>(<span style="color:#a6e22e">e</span>.<span style="color:#a6e22e">data</span>);
+}
+</code></pre></div>
+<h3 id="create-a-non-blocking-rust-service">Create a non blocking rust service.</h3>
+
+<p>Although we&rsquo;re now able to send msg to wasm/rust, what we actually want to achieve initially is to let the rust program works on its own.</p>
+
+<p>This can be done by creating a future, that embed a never ending loop, and yield every so often, so it won&rsquo;t block the whole thread. This approach is very familiar to what python programmer would do to:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">while</span> True:
+  await asyncio<span style="color:#f92672">.</span>sleep(<span style="color:#ae81ff">0</span>)
+  <span style="color:#75715e"># ...</span></code></pre></div>
+<p>This is somewhat needed to create a task, because currently condvar or similar primitives are not implemented in rust/wasm, so we can resume a future externally. However, to make a task reactive, we can use a inner flag to let it be runnable, else skipping every so often so it won&rsquo;t block other executions.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-rust" data-lang="rust"><span style="color:#66d9ef">pub</span> async <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">looper</span>() {
+  <span style="color:#66d9ef">loop</span> {
+    timer(<span style="color:#ae81ff">0</span>).await;
+    <span style="color:#e6db74">/// ...
+</span><span style="color:#e6db74"></span>  }
+}
+</code></pre></div>
+<p>The timer here, is actually converting a setTimeout promise to rust future, so that we can await it inside our rust program.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-rust" data-lang="rust"><span style="color:#66d9ef">use</span> js_sys::Promise;
+<span style="color:#66d9ef">use</span> wasm_bindgen_futures::futures_0_3::JsFuture;
+
+<span style="color:#e6db74">/// regular timer, which setTimeout is created by windows.
+</span><span style="color:#e6db74"></span><span style="color:#66d9ef">pub</span> async <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">timer</span>(ms: <span style="color:#66d9ef">i32</span>) -&gt; Result<span style="color:#f92672">&lt;</span>(), JsValue<span style="color:#f92672">&gt;</span> {
+
+    <span style="color:#75715e">// create a js promise using js_sys::Promise
+</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">let</span> promise <span style="color:#f92672">=</span> Promise::new(<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">mut</span> <span style="color:#f92672">|</span>yes, _<span style="color:#f92672">|</span> {
+        <span style="color:#66d9ef">let</span> win <span style="color:#f92672">=</span> window().unwrap();
+        win.set_timeout_with_callback_and_timeout_and_arguments_0(<span style="color:#f92672">&amp;</span>yes, ms)
+            .unwrap();
+    });
+
+    <span style="color:#75715e">// create a rust future from the promise
+</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">let</span> js_fut <span style="color:#f92672">=</span> JsFuture::from(promise);
+
+    <span style="color:#75715e">// now it can be awaited like other futures, nice!
+</span><span style="color:#75715e"></span>    js_fut.await<span style="color:#f92672">?</span>;
+    Ok(())
+}
+
+<span style="color:#e6db74">/// worker timer, which setTimeout is created by WorkerGlobalScope
+</span><span style="color:#e6db74">/// This is necessary because worker has no access to windows.
+</span><span style="color:#e6db74"></span><span style="color:#66d9ef">pub</span> async <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">worker_timer</span>(ms: <span style="color:#66d9ef">i32</span>) -&gt; Result<span style="color:#f92672">&lt;</span>(), JsValue<span style="color:#f92672">&gt;</span> {
+    <span style="color:#66d9ef">let</span> promise <span style="color:#f92672">=</span> Promise::new(<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">mut</span> <span style="color:#f92672">|</span>yes, _<span style="color:#f92672">|</span> {
+        <span style="color:#66d9ef">let</span> global <span style="color:#f92672">=</span> js_sys::global();
+        <span style="color:#66d9ef">let</span> scope <span style="color:#f92672">=</span> global.dyn_into::<span style="color:#f92672">&lt;</span>WorkerGlobalScope<span style="color:#f92672">&gt;</span>().unwrap();
+        scope
+            .set_timeout_with_callback_and_timeout_and_arguments_0(<span style="color:#f92672">&amp;</span>yes, ms)
+            .unwrap();
+    });
+    <span style="color:#66d9ef">let</span> js_fut <span style="color:#f92672">=</span> JsFuture::from(promise);
+    js_fut.await<span style="color:#f92672">?</span>;
+    Ok(())
+}
+</code></pre></div>
+<p>So now we can instantiate our rust program, it will not block, and the rest of js can run.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-rust" data-lang="rust"><span style="color:#66d9ef">pub</span> <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">spawn_service</span>() {
+  spawn_local(looper());
+}
+</code></pre></div>
+<p>Receiving messages won&rsquo;t be blocked by rust.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js"><span style="color:#66d9ef">import</span> { <span style="color:#a6e22e">module</span> } <span style="color:#a6e22e">from</span> <span style="color:#e6db74">&#34;Cargo.toml&#34;</span>
+
+<span style="color:#75715e">// spawning the task as a promise, so we can proceed with the following
+</span><span style="color:#75715e"></span><span style="color:#a6e22e">module</span>.<span style="color:#a6e22e">spawn_service</span>();
+<span style="color:#a6e22e">self</span>.<span style="color:#a6e22e">onmessage</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">e</span>=&gt; {
+  <span style="color:#75715e">// ...
+</span><span style="color:#75715e"></span>}
+</code></pre></div>
+<h3 id="non-blocking-producer">Non blocking producer</h3>
+
+<p>Dummy loop do no one any good, let&rsquo;s replace it with something better. We can improve this by passing the worker instance to the rust program directly, so rust can decide whether it want to dial back to the main thread via post_message.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-rust" data-lang="rust"><span style="color:#66d9ef">pub</span> async timely_call(worker: <span style="color:#a6e22e">web_sys</span>::Worker) {
+  <span style="color:#66d9ef">let</span> worker <span style="color:#f92672">=</span> worker.clone();
+  <span style="color:#66d9ef">loop</span> {
+    timer(<span style="color:#ae81ff">1000</span>).await.unwrap();
+    worker.post_message(<span style="color:#f92672">&amp;</span>JsValue::from(<span style="color:#e6db74">&#34;anything convertable&#34;</span>)).unwrap();
+  }
+}
+
+<span style="color:#66d9ef">pub</span> <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">spawn_service</span>(worker: <span style="color:#a6e22e">web_sys</span>::Worker) {
+  <span style="color:#66d9ef">let</span> worker <span style="color:#f92672">=</span> worker.clone();
+  spawn_local(timely_call(worker));
+}
+</code></pre></div>
+<p>Now the rust program can send message to the main thread periodically.</p>
+
+<h3 id="can-sending-receiving-be-non-blocking-too">Can sending/receiving be non-blocking too?</h3>
+
+<p>The previous part, we enable the program to send without blocking, but it lacks the ability to receive message. We can use futures channel to enhance the situation where all messages are stored in a queue.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-rust" data-lang="rust"><span style="color:#75715e">#[wasm_bindgen]</span>
+<span style="color:#66d9ef">pub</span> <span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">TaskHolder</span> {
+    input_rx: <span style="color:#a6e22e">Rc</span><span style="color:#f92672">&lt;</span>Mutex<span style="color:#f92672">&lt;</span>mpsc::Receiver<span style="color:#f92672">&lt;</span>JsValue<span style="color:#f92672">&gt;&gt;&gt;</span>,
+    input_tx: <span style="color:#a6e22e">mpsc</span>::Sender<span style="color:#f92672">&lt;</span>JsValue<span style="color:#f92672">&gt;</span>,
+    output_rx: <span style="color:#a6e22e">Rc</span><span style="color:#f92672">&lt;</span>Mutex<span style="color:#f92672">&lt;</span>mpsc::Receiver<span style="color:#f92672">&lt;</span>JsValue<span style="color:#f92672">&gt;&gt;&gt;</span>,
+    output_tx: <span style="color:#a6e22e">mpsc</span>::Sender<span style="color:#f92672">&lt;</span>JsValue<span style="color:#f92672">&gt;</span>,
+}
+
+<span style="color:#75715e">#[wasm_bindgen]</span>
+<span style="color:#66d9ef">pub</span> <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">run</span>() -&gt; <span style="color:#a6e22e">TaskHolder</span> {
+
+  <span style="color:#75715e">// make sure you impl that method under TaskHolder
+</span><span style="color:#75715e"></span>  TaskHolder::new()
+}
+</code></pre></div>
+<p>If we want to let js issue commands, we have to make our rust program accessible as a js object where it can mutate rust data via function call.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-rust" data-lang="rust"><span style="color:#75715e">// let&#39;s make method call accessible under both rust/js
+</span><span style="color:#75715e"></span><span style="color:#75715e">#[wasm_bindgen]</span>
+<span style="color:#66d9ef">impl</span> TaskHolder {
+  <span style="color:#66d9ef">pub</span> <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">catch_msg</span>(<span style="color:#f92672">&amp;</span>self, msg: <span style="color:#a6e22e">JsValue</span>) {
+    <span style="color:#66d9ef">let</span> <span style="color:#66d9ef">mut</span> sender <span style="color:#f92672">=</span> self.input_tx.clone();
+    spawn_local(async <span style="color:#66d9ef">move</span> {
+        sender.send(msg).await.unwrap();
+    });
+  }
+}
+</code></pre></div>
+<p>And now we can reach for the method inside js too.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-js" data-lang="js"><span style="color:#75715e">// now messages are queue in the struct channel, hence nonblocking
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">let</span> <span style="color:#a6e22e">holder</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">module</span>.<span style="color:#a6e22e">run</span>()
+<span style="color:#a6e22e">self</span>.<span style="color:#a6e22e">addEventListener</span>(<span style="color:#e6db74">&#34;message&#34;</span>, <span style="color:#a6e22e">e</span> =&gt; {
+  <span style="color:#a6e22e">holder</span>.<span style="color:#a6e22e">catch_msg</span>(<span style="color:#a6e22e">e</span>.<span style="color:#a6e22e">data</span>)
+})
+</code></pre></div>
+<p>This only sends data to the queue, our rust program haven&rsquo;t started processing or producing any results just yet.</p>
+
+<h3 id="implementing-the-consumer-producer-loop">Implementing the consumer/producer loop</h3>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-rust" data-lang="rust"><span style="color:#66d9ef">use</span> futures:{sink::SinkExt, stream::StreamExt};
+<span style="color:#75715e">// this is needed, so we can use next for stream and send to sink as an awaitable future.
+</span><span style="color:#75715e"></span>
+<span style="color:#66d9ef">impl</span> TaskHolder {
+  <span style="color:#66d9ef">pub</span> <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">init_service</span>(<span style="color:#f92672">&amp;</span>self, worker: <span style="color:#a6e22e">web_sys</span>::Worker) {
+
+    <span style="color:#75715e">// This future will listen to all incoming msg in the incomin queue.
+</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">let</span> input_rx <span style="color:#f92672">=</span> self.input_rx.clone();
+    <span style="color:#66d9ef">let</span> output_tx <span style="color:#f92672">=</span> self.output_rx.clone();
+    <span style="color:#66d9ef">let</span> input_loop <span style="color:#f92672">=</span> async <span style="color:#66d9ef">move</span> {
+        <span style="color:#66d9ef">loop</span> {
+            <span style="color:#75715e">// only lock it when we want to listen to it.
+</span><span style="color:#75715e"></span>            <span style="color:#66d9ef">let</span> <span style="color:#66d9ef">mut</span> unlocked_rx <span style="color:#f92672">=</span> input_rx.lock().await;
+            <span style="color:#66d9ef">if</span> <span style="color:#66d9ef">let</span> Some(msg) <span style="color:#f92672">=</span> unlocked_rx.next().await {
+                info<span style="color:#f92672">!</span>(<span style="color:#e6db74">&#34;{:?}&#34;</span>, <span style="color:#f92672">&amp;</span>msg);
+                output_tx.send(msg).unwrap();
+            }
+        }
+    };
+
+    <span style="color:#75715e">// This future will produce all results to the output queue
+</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">let</span> output_rx <span style="color:#f92672">=</span> self.output_rx.clone();
+    <span style="color:#66d9ef">let</span> task_loop <span style="color:#f92672">=</span> async <span style="color:#66d9ef">move</span> {
+        <span style="color:#66d9ef">loop</span> {
+            <span style="color:#66d9ef">let</span> <span style="color:#66d9ef">mut</span> unlocked_rx <span style="color:#f92672">=</span> output_rx.lock().await;
+            <span style="color:#66d9ef">if</span> <span style="color:#66d9ef">let</span> Some(msg) <span style="color:#f92672">=</span> unlocked_rx.next().await {
+                info<span style="color:#f92672">!</span>(<span style="color:#e6db74">&#34;{:?}&#34;</span>, <span style="color:#f92672">&amp;</span>msg);
+                <span style="color:#75715e">// do something about the data
+</span><span style="color:#75715e"></span>                worker.send(<span style="color:#f92672">&amp;</span>msg).unwrap();
+            }
+
+        }
+    };
+
+    <span style="color:#75715e">// run them concurrently.
+</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">let</span> combined <span style="color:#f92672">=</span> futures::future::join(input_loop, output_loop);
+
+    <span style="color:#75715e">// run the combined future
+</span><span style="color:#75715e"></span>    spawn_local(async {
+        combined.await;
+    });
+  }
+}
+</code></pre></div>
+<p>To this point, it becomes clear, that using queue internally, we are able to create a running service, where input/output are unblocking.</p>
+
+<h3 id="offload-tasks-to-another-inner-self-controlled-loop">Offload tasks to another inner self controlled loop.</h3>
+
+<p>There are many tools to extend this. For example, we can create another task look, that intercept the incoming message, and create some sub-tasks, and eventually submit the results to the outgoing loop.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-rust" data-lang="rust"><span style="color:#75715e">#[wasm_bindgen]</span>
+<span style="color:#66d9ef">impl</span> TaskHolder {
+    <span style="color:#66d9ef">pub</span> <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">new</span>() -&gt; <span style="color:#a6e22e">Self</span> {
+        <span style="color:#66d9ef">let</span> (input_tx, input_rx) <span style="color:#f92672">=</span> mpsc::channel::<span style="color:#f92672">&lt;</span>JsValue<span style="color:#f92672">&gt;</span>(<span style="color:#ae81ff">100</span>);
+        <span style="color:#66d9ef">let</span> (output_tx, output_rx) <span style="color:#f92672">=</span> mpsc::channel::<span style="color:#f92672">&lt;</span>JsValue<span style="color:#f92672">&gt;</span>(<span style="color:#ae81ff">100</span>);
+        TaskHolder {
+            running: <span style="color:#a6e22e">Rc</span>::new(Mutex::new(<span style="color:#66d9ef">true</span>)),
+            input_rx: <span style="color:#a6e22e">Rc</span>::new(Mutex::new(input_rx)),
+            input_tx,
+            output_rx: <span style="color:#a6e22e">Rc</span>::new(Mutex::new(output_rx)),
+            output_tx,
+        }
+    }
+
+    <span style="color:#66d9ef">pub</span> <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">catch_msg</span>(<span style="color:#f92672">&amp;</span>self, msg: <span style="color:#a6e22e">JsValue</span>) {
+        <span style="color:#66d9ef">let</span> <span style="color:#66d9ef">mut</span> sender <span style="color:#f92672">=</span> self.input_tx.clone();
+        spawn_local(async <span style="color:#66d9ef">move</span> {
+            sender.send(msg).await.unwrap();
+        });
+    }
+
+    <span style="color:#66d9ef">pub</span> <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">init_holder</span>(<span style="color:#f92672">&amp;</span>self, worker: <span style="color:#a6e22e">web_sys</span>::Worker) {
+        <span style="color:#66d9ef">let</span> fut <span style="color:#f92672">=</span> {
+            <span style="color:#66d9ef">let</span> running <span style="color:#f92672">=</span> self.running.clone();
+            <span style="color:#66d9ef">let</span> input_rx <span style="color:#f92672">=</span> self.input_rx.clone();
+            <span style="color:#66d9ef">let</span> input_loop <span style="color:#f92672">=</span> async <span style="color:#66d9ef">move</span> {
+                <span style="color:#66d9ef">loop</span> {
+                    <span style="color:#66d9ef">let</span> <span style="color:#66d9ef">mut</span> unlocked_rx <span style="color:#f92672">=</span> input_rx.lock().await;
+                    <span style="color:#66d9ef">if</span> <span style="color:#66d9ef">let</span> Some(msg) <span style="color:#f92672">=</span> unlocked_rx.next().await {
+                        info<span style="color:#f92672">!</span>(<span style="color:#e6db74">&#34;{:?}&#34;</span>, <span style="color:#f92672">&amp;</span>msg);
+                        <span style="color:#66d9ef">let</span> <span style="color:#66d9ef">mut</span> running <span style="color:#f92672">=</span> running.lock().await;
+                        <span style="color:#f92672">*</span>running <span style="color:#f92672">=</span> <span style="color:#f92672">!*</span>running;
+                    }
+                }
+            };
+
+            <span style="color:#66d9ef">let</span> worker <span style="color:#f92672">=</span> worker.clone();
+            <span style="color:#66d9ef">let</span> output_rx <span style="color:#f92672">=</span> self.output_rx.clone();
+            <span style="color:#66d9ef">let</span> output_loop <span style="color:#f92672">=</span> async <span style="color:#66d9ef">move</span> {
+                <span style="color:#66d9ef">loop</span> {
+                    <span style="color:#66d9ef">let</span> <span style="color:#66d9ef">mut</span> unlocked_rx <span style="color:#f92672">=</span> output_rx.lock().await;
+                    <span style="color:#66d9ef">if</span> <span style="color:#66d9ef">let</span> Some(msg) <span style="color:#f92672">=</span> unlocked_rx.next().await {
+                        worker.post_message(<span style="color:#f92672">&amp;</span>msg).unwrap();
+                    }
+                }
+            };
+
+            <span style="color:#66d9ef">let</span> running <span style="color:#f92672">=</span> self.running.clone();
+            <span style="color:#66d9ef">let</span> <span style="color:#66d9ef">mut</span> output_tx <span style="color:#f92672">=</span> self.output_tx.clone();
+            <span style="color:#66d9ef">let</span> task_loop <span style="color:#f92672">=</span> async <span style="color:#66d9ef">move</span> {
+                <span style="color:#66d9ef">loop</span> {
+                    utils::worker_timer(<span style="color:#ae81ff">0</span>).await.unwrap();
+                    <span style="color:#66d9ef">if</span> <span style="color:#f92672">*</span>running.lock().await {
+                        output_tx.send(JsValue::from(<span style="color:#e6db74">&#34;hello&#34;</span>)).await.unwrap();
+                        utils::worker_timer(<span style="color:#ae81ff">1000</span>).await.unwrap();
+                    }
+                }
+            };
+            <span style="color:#66d9ef">let</span> combined <span style="color:#f92672">=</span> futures::future::join3(input_loop, output_loop, task_loop);
+            async {
+                combined.await;
+            }
+        };
+
+        spawn_local(fut);
+    }
+}
+
+<span style="color:#75715e">#[wasm_bindgen]</span>
+<span style="color:#66d9ef">pub</span> <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">run</span>() -&gt; <span style="color:#a6e22e">TaskHolder</span> {
+
+    set_panic_hook();
+    console_log::init().unwrap();
+    TaskHolder::new()
+}
+</code></pre></div>
+<p>The above example, started another interval that will try to run if applicable, while the input/output are all non-blocking too. You can implement your own suspending/resuming mechanics by matching the incoming msg.</p>
+
+<h3 id="potential-use-cases">Potential use cases.</h3>
+
+<p>While haven&rsquo;t tried any, I think you can use this setup to offload other tasks tool.</p>
+
+<p>For example, when scrolling past a certain region of your page, send a fetch future(converted from fetch.promise) to get new posts, and cancel it by invoking the AbortHandle inside TaskHolder, if user no longer is interested in that direction.</p>
+
+<p>Or maybe a pathfinder in a game, that will try to obtain new possible paths a user might go while the user is moving(hence sending msg to the worker), suspend finding if it reaches places where no interaction is possible.</p>
+
+<h2 id="silly-demo">Silly Demo</h2>
+
+<p>The demo below will let you pause the inner task I mentioned earlier, and be able to resume it again by flipping the running flag.</p>
+
+<p><img src="/worker_demo.gif" alt="demo" /></p>
+
+<h2 id="findings">Findings</h2>
+
+<p><strong>what I lked so far</strong></p>
+
+<p>What I like the most about rust&rsquo;s async story, is that we have so much more control over how task&rsquo;s is handled. We can suspend, cancel by AbortHandle and chain them all together.</p>
+
+<p><strong>awaiting brighter future with synchronize primitives</strong></p>
+
+<p>A big caveat about the last example is that it requires your inner task to have small distance between await points. Because we are letting it be non-blocking by sleeping every so often.</p>
+
+<p>While it may not cost much to yielding every so often, it would still be better if we can use CondVar or Events for task notification, so we can manage tasks with more confidence and submit less tasks to the js microtasks queue.</p>
+
+<p><strong>unexplored: Inter Process Communication</strong></p>
+
+<p>Right now, we are only controlling tasks in a single worker, so it won&rsquo;t magically make your program go full multi-threaded. However it might be possible to orchestrate IPC within a central node, and let them communicate with each other as if we are spawning services inside different workers.</p>
+
+<p>Surprisingly, there&rsquo;s similarity between wasm-worker and python that I recognized in the process of learning this.</p>
+
+<p>Python&rsquo;s GIL prohibits speed gains by sending computational work across threads, one have to use multiprocessing and exchange data between processes.</p>
+
+<p>WASM(wasm-unknown-unknown) right now lacks of threading. So if someone want to gain speed, using workers and exchange data between them without meddling the WASM blob directly, seems very similar to how python&rsquo;s multiprocessing works.</p>
+
+<p>When I was coding multiprocessing in python, the three biggest drawbacks would be 1. memory usage, 2. latency 3. data duplication. While haven&rsquo;t benchmarked, I think the wasm version might be somehow limited to these kinds of IPC approach too.</p>
+
+<p>I think the right direction would be try to use SharedArrayBuffer or Atomic instructions to improve the situation later, so we I share more data between workers without cloning them.</p>
+
+<p><strong>The learning</strong></p>
+
+<p>Since I&rsquo;m by no means a multi-core master, or let along a rust veteran, while I believe it is possible to orchestrate tasks between workers in an clean manner, I&rsquo;m yet to be educated.</p>
+
+<p>This posts was created to accompany my journey of learning to use rust/wasm/async/worker all together, it&rsquo;s never a professional tutorial.</p>
+
+        </div>
+
+        
+        
+        <div class="article-toc" style="display:none;">
+            <h3>Contents</h3>
+            <nav id="TableOfContents">
+<ul>
+<li><a href="#into">Into</a>
+<ul>
+<li><a href="#goal">Goal</a></li>
+<li><a href="#implementation">Implementation</a>
+<ul>
+<li><a href="#send-msg-to-rust-wasm">Send msg to rust/wasm</a></li>
+<li><a href="#create-a-non-blocking-rust-service">Create a non blocking rust service.</a></li>
+<li><a href="#non-blocking-producer">Non blocking producer</a></li>
+<li><a href="#can-sending-receiving-be-non-blocking-too">Can sending/receiving be non-blocking too?</a></li>
+<li><a href="#implementing-the-consumer-producer-loop">Implementing the consumer/producer loop</a></li>
+<li><a href="#offload-tasks-to-another-inner-self-controlled-loop">Offload tasks to another inner self controlled loop.</a></li>
+<li><a href="#potential-use-cases">Potential use cases.</a></li>
+</ul></li>
+<li><a href="#silly-demo">Silly Demo</a></li>
+<li><a href="#findings">Findings</a></li>
+</ul></li>
+</ul>
+</nav>
+        </div>
+        
+        
+
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.slim.min.js" integrity="sha256-/SIrNqv8h6QGKDuNoLGA4iret+kyesCkHGzVUUV0shc=" crossorigin="anonymous"></script>
+        <script>
+            (function() {
+                var $toc = $('#TableOfContents');
+                if ($toc.length > 0) {
+                    var $window = $(window);
+
+                    function onScroll(){
+                        var currentScroll = $window.scrollTop();
+                        var h = $('.article-entry h1, .article-entry h2, .article-entry h3, .article-entry h4, .article-entry h5, .article-entry h6');
+                        var id = "";
+                        h.each(function (i, e) {
+                            e = $(e);
+                            if (e.offset().top - 10 <= currentScroll) {
+                                id = e.attr('id');
+                            }
+                        });
+                        var active = $toc.find('a.active');
+                        if (active.length == 1 && active.eq(0).attr('href') == '#' + id) return true;
+
+                        active.each(function (i, e) {
+                            $(e).removeClass('active').siblings('ul').hide();
+                        });
+                        $toc.find('a[href="#' + id + '"]').parentsUntil('#TableOfContents').each(function (i, e) {
+                            $(e).children('a').addClass('active').siblings('ul').show();
+                        });
+                    }
+
+                    $window.on('scroll', onScroll);
+                    $(document).ready(function() {
+                        $toc.find('a').parent('li').find('ul').hide();
+                        onScroll();
+                        document.getElementsByClassName('article-toc')[0].style.display = '';
+                    });
+                }
+            })();
+        </script>
+        
+
+
+        
+        <footer class="article-footer">
+            <ul class="article-tag-list">
+                
+                <li class="article-tag-list-item">
+                    <a class="article-tag-list-link" href="https://extraymond.github.io//tags/rust">rust
+                    </a>
+                </li>
+                
+                <li class="article-tag-list-item">
+                    <a class="article-tag-list-link" href="https://extraymond.github.io//tags/wasm">wasm
+                    </a>
+                </li>
+                
+                <li class="article-tag-list-item">
+                    <a class="article-tag-list-link" href="https://extraymond.github.io//tags/webworker">webworker
+                    </a>
+                </li>
+                
+                <li class="article-tag-list-item">
+                    <a class="article-tag-list-link" href="https://extraymond.github.io//tags/async">async
+                    </a>
+                </li>
+                
+            </ul>
+        </footer>
+        
+    </div>
+    <nav id="article-nav">
+    
+    
+    <a href="/posts/2019-07-07-aframe-dragndrop-component/" id="article-nav-older" class="article-nav-link-wrap">
+        <div class="article-nav-title">Aframe dragndrop component&nbsp;<span>&gt;</span></div>
+    </a>
+    
+</nav>
+
+</article>
+
+        
+            <div id="disqus_thread"></div>
+<script type="application/javascript">
+    var disqus_config = function () {
+    
+    
+    
+    };
+    (function() {
+        if (["localhost", "127.0.0.1"].indexOf(window.location.hostname) != -1) {
+            document.getElementById('disqus_thread').innerHTML = 'Disqus comments not available by default when the website is previewed locally.';
+            return;
+        }
+        var d = document, s = d.createElement('script'); s.async = true;
+        s.src = '//' + "extraymond-blog" + '.disqus.com/embed.js';
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+        
+    </section>
+    <footer id="footer">
+    <div class="outer">
+        <div id="footer-info" class="inner">
+            &copy; 2019 Personal Blog
+            <br />
+            Powered by <a href="https://gohugo.io" target="_blank">Hugo</a> with theme <a href="https://github.com/carsonip/hugo-theme-minos" target="_blank">Minos</a>
+        </div>
+    </div>
+    
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-143288999-1', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.9.0/styles/tomorrow-night.min.css" integrity="sha256-2wL88NKUqvJi/ExflDzkzUumjUM73mcK2gBvBBeLvTk=" crossorigin="anonymous" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.9.0/highlight.min.js" integrity="sha256-KbfTjB0WZ8vvXngdpJGY3Yp3xKk+tttbqClO11anCIU=" crossorigin="anonymous"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.7.1/katex.min.css" integrity="sha384-wITovz90syo1dJWVh32uuETPVEtGigN07tkttEqPv+uR2SE/mbQcG7ATL28aI9H0" crossorigin="anonymous">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.7.1/katex.min.js" integrity="sha384-/y1Nn9+QQAipbNQWU65krzJralCnuOasHncUFXGkdwntGeSvQicrYkiUBwsgUqc1" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.7.1/contrib/auto-render.min.js" integrity="sha256-ExtbCSBuYA7kq1Pz362ibde9nnsHYPt6JxuxYeZbU+c=" crossorigin="anonymous"></script>
+        <script>renderMathInElement(document.body);</script>
+    
+    <script>
+        document.getElementById('main-nav-toggle').addEventListener('click', function () {
+            var header = document.getElementById('header');
+            if (header.classList.contains('mobile-on')) {
+                header.classList.remove('mobile-on');
+            } else {
+                header.classList.add('mobile-on');
+            }
+        });
+    </script>
+</footer>
+
+</div>
+</body>
+</html>
