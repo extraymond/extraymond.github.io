@@ -127,7 +127,7 @@
 <p>After instantiating our rust program inside the worker script. The first thing we need to consider, is how to pass messages from the main thread to the rust program. Typically for js programs, messages are handled in the onmesage block, so we can start from there.</p>
 
 <p>This can be done by creating a receiving method in the rust program.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-rust" data-lang="rust"><span style="color:#66d9ef">use</span> wasm_bindgen::JaValue;
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-rust" data-lang="rust"><span style="color:#66d9ef">use</span> wasm_bindgen::JsValue;
 
 <span style="color:#75715e">#[wasm_bindgen]</span>
 <span style="color:#66d9ef">pub</span> <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">recv_msg</span>(msg: <span style="color:#a6e22e">JsValue</span>) {
